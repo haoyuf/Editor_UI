@@ -1,0 +1,165 @@
+@font-face {
+	font-family: Roboto-Regular;
+	src: url('../fonts/RobotoTTF/Roboto-Regular.ttf');
+}
+@font-face {
+    font-family: 'Roboto-Light';
+    src: url('../fonts/RobotoTTF/Roboto-Light.ttf');
+}
+
+body{
+	font-family:Roboto-Light;
+}
+/*#b8db7c*/
+
+.BSH-Button{
+	color:#fff;
+	text-transform: uppercase;
+	background-color:#84c225;
+	padding: 6px 16px;
+	border: none;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+	border-radius: 2px;
+	outline: none;
+	-webkit-transition-duration: 0.1s;
+    transition-duration: 0.1s;
+    -webkit-transition-property: box-shadow;
+    transition-property: box-shadow;
+}
+
+.BSH-Button:hover {
+  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+}
+
+.BSH-Button:active {
+  box-shadow: none;
+}
+
+.BSH-Button:disabled{
+	background-color:#E0E0E0;
+	color:#9E9E9E;
+	box-shadow:none;
+}
+
+.BSH-AddProject{
+	background-color:#fff;
+	font-size:20px;
+	border: none;
+	padding: 6px 24px 6px 16px;
+	
+    -webkit-transition: all 0.3s ease;
+    transition: all 0.3s ease;
+}
+
+.BSH-AddProject:hover {
+	box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+	background-color:#84c225;
+	color:#fff;
+}
+
+.BSH-AddProject svg {
+    -webkit-transition: transform 0.3s ease;
+    transition: transform 0.3s ease;
+}
+
+.BSH-AddProject:hover svg {
+    transform: rotate(90deg);
+}
+
+.BSH-AddProject:hover svg path {
+    fill: #fff;
+}
+
+.BSH-NavBar{
+	position: fixed;
+    width: 100%;
+	border-bottom: 1px solid #b8db7c;
+	padding: 10px 20px;
+	height: 100px;
+}
+
+.BSH-Logo{
+	float: left;
+}
+
+.BSH-ProfileImg{
+    width: 50px;
+    height: 50px;
+    border: 1px solid #84c225;
+    border-radius: 50%;
+}
+
+.BSH-ProfileBtn{
+	margin: 31px 10px 0 10px;
+    padding: 4px;
+    float: right;
+}
+
+#MenuBtn{
+	width: 54px;
+    float: right;
+}
+
+.BSH-IcoBtn{
+	padding: 15px;
+	cursor: pointer;
+}
+
+.BSH-IcoBtn:active {
+	background:#b8db7c;	
+}
+
+.BSH-IcoBtn:active svg path {
+    fill: #558b2f;
+}
+
+.BSH-ActiveBtn{
+	background:#dcefb9;	
+}
+
+.BSH-ActiveBtn svg path{
+	fill: #558b2f;
+}
+
+.BSH-AlertIco{
+	margin: 31px 10px 0px 10px;
+    float: right;
+    padding: 15px 17px 14px 17px;
+}
+
+.BSH-LeftMenu{
+	position: fixed;
+    width: 54px;
+    background: #558b2f;
+    margin-top: 99px;
+    height: calc(100% - 99px);
+}
+
+.BSH-LeftMenuOpen{
+	-webkit-transition: 200ms ease;
+	-moz-transition: 200ms ease;
+	-ms-transition: 200ms ease;
+	-o-transition: 200ms ease;
+	transition: 200ms ease;
+	width: 200px;
+	box-shadow: 1px 1px 3px #888888;
+}
+
+.BSH-RightBar{
+	position: fixed;
+	right:0;
+    width: 250px;
+    background: #dcefb9;
+    margin-top: 99px;
+    height: calc(100% - 99px);
+}
+
+.BSH-MainContent{
+	width: calc(100% - 54px);
+    margin: 100px 0 0 54px;
+    position: fixed;
+    overflow-y: auto;
+    height: calc(100% - 100px);
+}
+
+
