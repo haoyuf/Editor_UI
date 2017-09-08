@@ -7,12 +7,12 @@ var IDF_RULEMANAGER = (function(){
 	
 	var idf_rules = null;
 	var referenceMap = new Map();
-	var idf_server = new Worker('js/idf_editor/idf_server.js');	
+	/*var idf_server = new Worker('js/idf_editor/idf_server.js');	
 	idf_server.addEventListener('message', function(e){
 		idf_rules = e.data.objects;
 		alert("data loaded by worker!");
 	})
-	idf_server.postMessage('load data');
+	idf_server.postMessage('load data');*/
 	
 	this.updateExtendedField = function(){
 		
@@ -238,7 +238,7 @@ var IDF_RULEMANAGER = (function(){
     					resolve();
     				}*/
     				
-        			/*if(idd_data){
+        			if(idd_data){
         				idf_rules = idd_data.objects;
         				alert("idfss rules loaded from local file!");
         				resolve();
@@ -261,7 +261,7 @@ var IDF_RULEMANAGER = (function(){
         	    				reject(err);
         	    			}
         	    		}); 
-        			} 				 */ 				
+        			} 				  				
     			}    		
     		});
     		return promiseObj;

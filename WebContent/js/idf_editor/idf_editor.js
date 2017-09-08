@@ -78,7 +78,7 @@ function IDF_EDITOR(configs){
 				self.idf_Objects = data["obj"];
 				self.tree_search =  data["treeSearch"];
  				$("#base").html(self.idf_DataHtml["1-1-1"]['baseContent']);
-				loadTextEditContent(); 							
+				//loadTextEditContent(); 							
 			//});	
     		
     	}

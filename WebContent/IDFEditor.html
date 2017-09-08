@@ -205,7 +205,7 @@
 <script src="CodeMirror/addon/hint/show-hint.js"></script>
 <!-- <script src="CodeMirror/addon/hint/javascript-hint.js"></script> -->
 <script src="js/idf_editor/resources/test_data.js"></script>
-<!-- <script src="js/idf_editor/resources/idd_data.min.js"></script> -->
+<script src="js/idf_editor/resources/idd_data.min.js"></script>
 <script src="js/idf_editor/idf_server.js"></script>
 <script src="js/idf_editor/idf_hint.js"></script>
 <script src="js/idf_editor/idf_instructionService.js"></script>
@@ -477,15 +477,7 @@
         });
         
     	$("#editMode").on('click',function(){
-        	if(idf_editor.idf_rule_manager.checkRuleLoaded() == false){
-        		//alert("please wait for a while to load the editor");
-        		$("#progress").html("Initiating Editor Configs ..."); 
-        		//setTimeout(function(){},)
-        		
-        		
-        	}else{
-        		switchContentMode(idf_editor.mode_options.text_edit);	
-        	}			
+        	switchContentMode(idf_editor.mode_options.text_edit);		
         })
         
         
