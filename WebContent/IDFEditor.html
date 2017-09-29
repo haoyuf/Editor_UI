@@ -15,7 +15,7 @@
 <link rel="stylesheet" href="CodeMirror/addon/dialog/dialog.css">
 <link rel="stylesheet" href="CodeMirror/addon/hint/show-hint.css">
 <link rel="stylesheet" href="CodeMirror/addon/tern/tern.css">
-<link rel="stylesheet" href="css/file.css">
+<link rel="stylesheet" href="css/idf_editor.css">
 <!-- <link href="https://gitcdn.github.io/bootstrap-toggle/2.2.2/css/bootstrap-toggle.min.css" rel="stylesheet"> -->
 
 
@@ -139,29 +139,29 @@
 			<div id="jstree" class="hideStatus"></div>
 		</div>
 		
-		<div class="content-container">
-			<div id="compare"  class="file" style="display:none;">
-				<div class="file-header">
-					<!-- <button class="btn-octicon" type="submit" aria-label="Check the history">History</button> -->
+		<div class="content-container">			 
+			 <div id="TabView">
+				<div id="layoutPosition">
+					<div class="left"></div>
+					<div class="right"></div>
+					<!-- <div class="bottom"></div> -->
 				</div>
-				<div id="base" class="blob-wrapper"></div>			
+				<div id="MainTab" class="tabs-container">
+					<ul class="nav nav-tabs">
+					</ul>
+					<div id="MainTab_Display" class="tab-content">					
+					</div>
+					<div id="MainTabEditor" class="activeEditor"></div>
+				</div>
+				<div id="RightTab" class="tabs-container">
+					<ul class="nav nav-tabs">
+					</ul>
+					<div id="RightTab_Display" class="tab-content">				
+					</div>
+					<div id="RightTabEditor" class="activeEditor"></div>	
+				</div>							
 			</div>
-			 
-						
-			<div id="editHolder" class="file" style="display:none; width:100%; height: 65vh">     	
-	        	<div class="file-header">
-<!-- 		    		<div class="file-actions">
-		    			<button id="cancel-update" class="btn-octicon" type="submit" aria-label="Edit this file">
-							Cancel
-	    				</button>						
-	    				<button id="submit-update" class="btn-octicon" type="submit" aria-label="Edit this file">
-							Save
-	    				</button>
-		    		</div> -->
-		    	</div>
-   				<div id="editContainer"></div> 				
-       		 </div>
-       		 
+						       		 
        		<div id="instructionHolder"  class="file" style="display:none; width:100%; height:20vh; margin-top:15px; overflow:scroll" >
 				<!-- <div class="file-header"></div> -->
 				<div id = "instructionContainer"></div>
@@ -183,7 +183,7 @@
 <script src="js/angular-sanitize.min.js"></script> -->
 <script src="js/bootstrap.min.js"></script>
 <!-- <script src="https://gitcdn.github.io/bootstrap-toggle/2.2.2/js/bootstrap-toggle.min.js"></script> -->
-<script src="js/moment.min.js"></script>
+<!-- <script src="js/moment.min.js"></script> -->
 <script src="js/jstree/jstree.min.js"></script>
 <script src="js/syntaxhighlighter.js"></script>
 <!-- <script src="js/Comment_Library.js"></script>
@@ -197,6 +197,7 @@
 <script src="CodeMirror/lib/codemirror.js"></script>
 <!-- <script src="CodeMirror/mode/javascript/javascript.js"></script> -->
 <script src="js/idf_editor/idf_mode.js"></script>
+<script src="js/idf_editor/idf_mode_osm.js"></script>
 <script src="CodeMirror/addon/search/search.js"></script>
 <script src="CodeMirror/addon/search/searchcursor.js"></script>
 <script src="CodeMirror/addon/search/matchesonscrollbar.js"></script>
@@ -206,11 +207,16 @@
 <!-- <script src="CodeMirror/addon/hint/javascript-hint.js"></script> -->
 <script src="js/idf_editor/resources/test_data.js"></script>
 <script src="js/idf_editor/resources/idd_data.min.js"></script>
+<script src="js/idf_editor/idf_editor_ui.js"></script>
 <script src="js/idf_editor/idf_server.js"></script>
 <script src="js/idf_editor/idf_hint.js"></script>
 <script src="js/idf_editor/idf_instructionService.js"></script>
 <script src="js/idf_editor/idf_tooltipService.js"></script>
+
 <script src="js/idf_editor/idf_objManager.js"></script>
+<script src="js/idf_editor/idf_fileManager.js"></script>
+<script src="js/idf_editor/idf_ruleManager_osm.js"></script>
+<script src="js/idf_editor/idf_ruleManager_eplus.js"></script>
 <script src="js/idf_editor/idf_ruleManager.js"></script>
 <script src="js/idf_editor/idf_editor.js"></script>
 
@@ -221,10 +227,11 @@
     //Global Parameters 
     //Can't change the name for now, since this name has dependencies, which needs to be fixed
     var idf_editor = new IDF_EDITOR({
-    	project_id:38,
-    	branch_id:76,
-    	commit_id:208,
-    	commit_mode: "file"
+    	project_id:1,
+    	branch_id:1,
+    	commit_id:1,
+    	commit_mode: "file",
+    	file_type:"eplus"
     });  
         
     
@@ -241,7 +248,7 @@
 		idf_editor.pullIdfContent();		      
         //Initiate rendering	
         initRendering();
-                  
+        register_handler_command();          
     });
 
     
@@ -292,7 +299,7 @@
                 $("#progress").html("Render Finished");
                 setTimeout(function(){
                     //Register listeners
-                    register_listeners_display();
+                    register_listeners_display();                    
                     setTimeout(function(){ 
                         $("#progress").hide();
                     }, 1500);
@@ -337,23 +344,27 @@
             
             //display different content under different mode
             if(curMode === idf_editor.mode_options.display){
-            	idf_editor.state.curLeafId = id;
-            	loadDisplayContent();            	
+            	//idf_editor.state.curLeafId = id;
+            	openDisplayContent(id);            	
             }else if(curMode === idf_editor.mode_options.text_edit){
-            	idf_editor.saveTextFile();
-            	idf_editor.state.curLeafId = id;
-            	loadTextEditContent();           	
+            	//first need to check if there is any tab already active in main tab
+            	//idf_editor.saveTextFile(id);        	
+            	openTextEditContent(id);           	
             }
-            
-                                   
+                                               
             //clean click
-            $("#"+data.node.id).attr("aria-selected","false");
-            
+            $("#"+data.node.id).attr("aria-selected","false");           
             $("#progress").hide();
         });
     }
     
-
+	function getActiveTabFromMainTab(){		
+		return $("#MainTab .nav-tabs .active");
+	}
+	
+	function getActiveTabFromRightTab(){
+		return $("#RightTab .nav-tabs .active");
+	}
     
     
     function register_listeners_display(){
@@ -477,7 +488,7 @@
         });
         
     	$("#editMode").on('click',function(){
-        	switchContentMode(idf_editor.mode_options.text_edit);		
+        	switchContentMode(idf_editor.mode_options.text_edit);			
         })
         
         
@@ -495,8 +506,22 @@
 
     	//submit button click
         $("#commit-changes").off().on('click',function(){
-			//validate the changes       	        
+        	
+        	//commit needs to save active tabs first, could be two
+/*         	var activeNavTabs = $("#TabView .nav-tabs li"); 
+        	for(var i = 0; i < activeNavTabs.length; i++){       		
+        	} */
+        	       	
+			//validate the changes
+/*         	for(var i=0; i< idf_editor.state.dirtyFiles.length; i++){
+        		var leafId = idf_editor.state.dirtyFiles[i];
+        		var text = $("#Tab"+leafId+" a").text();
+				$("#Tab"+leafId+" a").text(text.substring(1));
+        	} */
 			var commited = idf_editor.commitChanges();
+			//clean dirty files
+			//idf_editor.state.dirtyFiles = [];
+        	
 			if(commited)
 				switchContentMode(idf_editor.mode_options.display);
 			
@@ -505,8 +530,43 @@
         //cancel button click
         $("#cancel-edit").on('click',function(){ 	
         	switchContentMode(idf_editor.mode_options.display);
-        })
+        })               	
     }
+    
+   	function register_listener_tab(){
+   	    //Tab change
+   	    $('a[data-toggle="tab"]').unbind().on('shown.bs.tab', function (e) {
+/*    	   	  var target = $(e.target).attr("href") // activated tab
+   	   	  var prevTarget = $(e.relatedTarget).attr("href")
+   	   	  
+   	   	  alert("target:"+target + "/prevTarget:"+prevTarget);  
+   	   	  var leafId = target.substring(5);
+   	   	  var prevLeafId = prevTarget.substring(5);
+   	   	  var curMode = idf_editor.state.curMode; */
+/*    		  if(curMode === idf_editor.mode_options.text_edit){
+   			//first need to check if there is any tab already active in main tab
+   			//idf_editor.saveTextFile(prevLeafId);
+   			
+   			if($(target).find(".edit").is(':empty')){ 				
+   				loadTextEditContentForActiveTab($(target).find(".edit"),leafId)
+   			}else{  				
+   				idf_editor.text_editor_active = idf_editor.getTextEditorByLeafId(leafId);
+   			}  			       	
+   		  }
+   		  
+   		  if(curMode === idf_editor.mode_options.display){
+   			  if($(target).find(".display").is(':empty')){
+   				var htmlContent = idf_editor.buildHtmlForLeafId(leafId);
+   				$(target).find(".display").append(htmlContent['baseContent']);
+   			  }
+   		  } */
+   		  
+   	   	  //loadTextEditContentForActiveTab($(target).find(".edit"), target.substring(5));
+   	   	  //$(this).tab('show');       	  
+   	   	});
+   	}
+
+    
     
     function switchContentMode(targetMode){
     	var curMode = idf_editor.state.curMode;
@@ -551,17 +611,17 @@
     }
                  
     function removeDisplayContent(){
-    	$("#compare").hide();
+    	$(".display").hide();
     	$("#displayModeAction").hide();
     }
     
     function removeTextEditContent(){
-    	if(idf_editor.text_editor != null){   		
-    		idf_editor.text_editor.toTextArea();
+    	if(idf_editor.text_editors.length > 0){   		
+    		//idf_editor.text_editor.toTextArea();
     		idf_editor.cleanEditorState();  		
     	};
     	$("#editModeAction").hide();
-    	$("#editHolder").hide();
+    	$(".edit").empty();
     	$("#instructionHolder").hide();
     }
     
@@ -570,126 +630,312 @@
     		
     	}
     	$("#displayModeAction").hide();
-    	$("#editHolder").hide();
+    	$("#editTab").hide();
     }
       
-    
-    function loadDisplayContent(){
-    	$("#displayModeAction").show();       	       	
-    	var htmlContent = idf_editor.buildHtmlForCurLeafId();
-    	$("#base").html('');
-    	
+    function openDisplayContent(leafId){     	       	
+    	var htmlContent = idf_editor.buildHtmlForLeafId(leafId);   	
     	if(!htmlContent){           
             $("#progress").hide();
             return;
-    	}else{
-    		$("#base").html('');
-    		$("#base").html(htmlContent['baseContent']);
     	}
-    	$("#compare").show();
+    	
+        function openNewDisplayContent(leafId){    	
+    		$("#MainTab ul").first().children().removeClass("active");
+    		$("#MainTab ul").first().append('<li id="Tab'+leafId+'" class="active"><a data-toggle="tab" href="#tab-'+leafId+'"> '+leafId +'<span class="tabD" draggable="true"></span></a><span class="tabclose close">×</span></li>');
+    		$("#MainTab_Display").children().removeClass("active");
+    		$("#MainTab_Display").append('<div id="tab-'+leafId+'" class="tab-pane active"><div class="panel-body">'+getNewDisplayTabContentHtml(leafId)+'</div></div>');
+    		$(".tabclose").unbind().click(tabClose);
+    		$(".tabD").unbind().on('dragstart', onDragStart);	   	
+        }
+        
+        function openExistingDisplayContent(leafId){
+    		//var activeIndex = idf_editor.text_editors_index.indexOf(leafId);
+    		//idf_editor.text_editor_active = idf_editor.text_editors[activeIndex];    	
+    		$("#Tab"+leafId).parent().first().children().removeClass("active");
+    		$("#Tab"+leafId).addClass("active");		
+    		$("#tab-"+leafId).parent().first().children().removeClass("active");
+    		$("#tab-"+leafId).addClass("active");	   	
+        }
+            	
+    	if($("#Tab"+leafId).length != 0){
+    		openExistingDisplayContent(leafId);   		
+    	}else{						
+    		openNewDisplayContent(leafId);
+    	}
     }
     
-    function loadTextEditContent(){	
-		idf_editor.idf_rule_manager.loadIdfRulesPromise().then(function(){		
+    function getNewDisplayTabContentHtml(leafId){
+    	var htmlContent = idf_editor.buildHtmlForLeafId(leafId);    	
+    	return '<div class="display">'+htmlContent['baseContent']+'</div><div class="edit"></div>';    	
+    }
+    
+       
+    function loadDisplayContent(){  	   	
+    	$("#displayModeAction").show();
+    	$(".display").show();
+    	
+    	var navTabs = $("#TabView .nav-tabs li");
+  	
+    	for(var i = 0; i < navTabs.length; i++){
+    		var activeTab = navTabs[i];  		
+    		var leafId = $(activeTab)[0].id.substring(3);
+    		//var editContent = $(activeTab).parent().parent().find(".activeEditor");    		
+    		var displayContent_locator = $("#tab-"+leafId+" .display");
+    		
+    		if(displayContent_locator.is(':empty')){
+    			displayContent_locator.append(getNewDisplayTabContentHtml(leafId));
+    		}  		 		
+    	}   	
+    }
+    
+     
+    function openTextEditContent(leafId){
+        function openExistingTextEditContent(leafId){
+    		var activeIndex = idf_editor.text_editors_index.indexOf(leafId);
+    		idf_editor.text_editor_active = idf_editor.text_editors[activeIndex];
+        	
+    		$("#Tab"+leafId).parent().first().children().removeClass("active");
+    		$("#Tab"+leafId).addClass("active");		
+    		$("#tab-"+leafId).parent().first().children().removeClass("active");
+    		$("#tab-"+leafId).addClass("active");				
+        }
+        
+        function openNewTextEditContent(leafId){
+    		$("#MainTab ul").first().children().removeClass("active");
+    		$("#MainTab ul").first().append('<li id="Tab'+leafId+'" class="active"><a data-toggle="tab" href="#tab-'+leafId+'"> '+leafId +'<span class="tabD" draggable="true"></span></a><span class="tabclose close">×</span></li>');
+    		$("#MainTab .tab-content").children().removeClass("active");
+    		$("#MainTab .tab-content").append('<div id="tab-'+leafId+'" class="tab-pane active"><div class="panel-body">'+getNewEditTabContentHtml(leafId)+'</div></div>');
+    		$(".tabclose").unbind().click(tabClose);
+    		$(".tabD").unbind().on('dragstart', onDragStart);
+    		loadTextEditContentForActiveTab($("#tab-"+leafId+" .edit"), leafId);    	
+        }
+               
+     	if($("#Tab"+leafId).length > 0){           
+    		openExistingTextEditContent(leafId);
+    	}else{
+    		openNewTextEditContent(leafId);
+    	}
+    }
+    
+    function getNewEditTabContentHtml(leafId){   	    	
+    	return '<div class="display"></div><div class="edit"></div>';  
+    }
+
+    
+    function locateLeafId(leafId){
+    	return $("#Tab"+leafId).parent().parent()[0].id;
+    }
+    
+    
+    function loadTextEditContent(){ 
+    	//var activeNavTabs = $("#TabView .nav-tabs li.active"); 
+    	var navTabs = $("#TabView .nav-tabs li");
+    	$("#editModeAction").show();
+  	
+    	for(var i = 0; i < navTabs.length; i++){
+    		var activeTab = navTabs[i];  		
+    		var leafId = $(activeTab)[0].id.substring(3);
+    		//var editContent = $(activeTab).parent().parent().find(".activeEditor");    		
+    		var editContent_locator = $("#tab-"+leafId+" .edit");
+    		loadTextEditContentForActiveTab(editContent_locator,leafId);   		
+    	}
+    	
+    	//how to check if already registeed?
+  		//only need to register once, need to fix this part
+     	register_listener_edit(); 		
+    }
+    
+    function refreshTextEditContent(leafId){
+    	var editContent_locator = $("#tab-"+leafId+" .edit");
+    	editContent_locator.empty();
+    	loadTextEditContentForActiveTab(editContent_locator, leafId);
+    }
+    
+	function refreshOtherTextEditContent(gvLeafId){
+		var navTabs = $("#TabView .nav-tabs li");
+		for(var i = 0; i < navTabs.length; i++){
+    		var activeTab = navTabs[i];  		
+    		var leafId = $(activeTab)[0].id.substring(3);
+			if(leafId != gvLeafId){
+				//refreshTextEditContent(leafId);
+	    		var cm = idf_editor.getTextEditorByLeafId(leafId);
+				cm.execCommand("newlineAndIndent");
+				CodeMirror.commands.undo(cm);
+			}	
+    	}   	
+		
+	}	
+    
+	function loadTextEditContentForActiveTab(editContent_locator,leafId){			
+		var editContent_holder = editContent_locator.parent().parent().parent().parent().find(".activeEditor");		
+		var objLabel = idf_editor.findLabelByTreeId(leafId);
+		
+		function getIdfMode(){
+			if(idf_editor.file_type === "osm"){
+				return "idf_osm";
+			}else{
+				return "idf";
+			}
+		}
+		
+		idf_editor.idf_rule_manager.loadIdfRulesByLabelAndReferences(idf_editor.state.commit_id,objLabel).then(function(){		
 			
 	    	//show controls
-	    	$("#editModeAction").show();   	        	
-	   		
-	    	var divText = idf_editor.loadTextForCurLeafId();
-	    		    	
-	    	$("#editHolder").show();
-	    	$("#instructionHolder").show();
-	    	
-			var editableText = $("<textarea id='edittext' />");
+	    	//$(".edit").empty();
+			$("#instructionHolder").show();
+			var editableText = $("<textarea id= textarea-"+leafId+ "/>");
+			var divText = idf_editor.loadTextForLeafId(leafId);
 			editableText.val(divText);
-			$("#editContainer").empty();
-			$("#editContainer").append(editableText);
 			
-													
- 			function cleanInstruction(){
-				$("#instructionContainer").empty();
-			}; 
-			
-			function showInstruction(cm){
-				cleanInstruction();				
- 				var propertyInfoView = idf_editor.idf_instruction_service.buildViewForSelectedTextInfo();
- 				
- 				$("#instructionContainer").append(propertyInfoView);											
-			}
-			
- 			function showErrorMessaging(cm){
-				//alert(errors[errors.length-1])				
-				idf_editor.idf_tooltip_service.showContextInfo(cm, "error");											
-			}
-			
-			var stage = {
-					noNodes : 0,
-					labelDeclared : 1,
-					nodeCreated : 2,
-					propertyValueCreated : 3,
-					propertyValueClosed : 4,
-					nodeClosed : 5,
-				}
-			
-			
-			function configureMouseExtra(cm, repeat, event){
-				var tokenState = cm.getTokenAt(cm.getCursor());
-				if(repeat == "single" && event.type == "mousedown"){										
-					if(tokenState.state.errors && tokenState.state.errors.length >0){
-						//condition 1: property error
-						if(tokenState.state.curNode && tokenState.state.curNode.curProp
-								&& tokenState.state.stage == stage.propertyValueCreated
-								&& tokenState.state.curNode.curProp.isValid == false){
-							showErrorMessaging(cm);
-						}
-											
-						//condition 2: node error
- 						if(tokenState.state.curNode && !tokenState.state.curNode.curProp 
- 								&& tokenState.state.stage == stage.nodeClosed 
- 								&& tokenState.state.curNode.isValid == false){
-							showErrorMessaging(cm);
-						}
-	
-					}	
+			editContent_holder.empty();
+			editContent_holder.append(editableText);
 					
-				}
-				
-				if(repeat == "double" && event.type == "mousedown" ){				
-					if(tokenState.type ==="idf-label"
-							|| tokenState.state.curNode && tokenState.state.curNode.curProp){
-						
-						showInstruction(cm);
-					}			
-				}
-				return {
-					unit : null,
-					extend: false,
-					addNew: false,
-					moveOrDrag: false					
-				}
-			}
-	
-			
-			idf_editor.text_editor = CodeMirror.fromTextArea(document.getElementById("edittext"), {
+			idf_editor.text_editor_active = CodeMirror.fromTextArea(document.getElementById("textarea-"+leafId), {
 				extraKeys:{"Ctrl-Space":"autocomplete"},
 				configureMouse: configureMouseExtra,
 	  			lineNumbers:true,
-				mode:"idf",
+				mode: getIdfMode(),
 				indentUnit:2,
 				//hintOptions:{hint: idf_editor.autoComplete}
 	        });
-			//below methods will be redesigned
-			//idf_editor.instruction_service = new instructionService();
-			idf_editor.idf_instruction_service.loadEditor(idf_editor.text_editor);
-			idf_editor.idf_tooltip_service.loadEditor(idf_editor.text_editor);
+			idf_editor.text_editors_index.push(leafId);
+			idf_editor.text_editors.push(idf_editor.text_editor_active);
+			editContent_locator.append(editContent_holder.children());
+			register_listener_editor(idf_editor.text_editor_active);
 		})
-		 
-  		//only need to register once, need to fix this part
-     	register_listener_edit(); 
-  		
-  		
-    }
+		register_listener_tab();
+		
+	}
     
+	//remove all marks generated on edit mode
+	function removeTextEditorMarks(){
+		//remove *　ｆｒｏｍ　ｔｈｅ　ｎａｖ
+		
+						
+	}
+	
+		
+	function cleanInstruction(){
+		$("#instructionContainer").empty();
+	}; 
+	
+	function showInstruction(cm, tokenState){
+		cleanInstruction();
+		idf_editor.idf_instruction_service.loadEditor(cm, idf_editor.idf_rule_manager);
+		var propertyInfoView = idf_editor.idf_instruction_service.buildViewForSelectedTextInfo();
+		
+		$("#instructionContainer").append(propertyInfoView);											
+	}
+	
+	function showErrorMessaging(cm){
+		idf_editor.idf_tooltip_service.loadEditor(cm);				
+		idf_editor.idf_tooltip_service.showContextInfo(cm, "error");											
+	}
+	
+	var stage = {
+			noNodes : 0,
+			labelDeclared : 1,
+			nodeCreated : 2,
+			propertyValueCreated : 3,
+			propertyValueClosed : 4,
+			nodeClosed : 5,
+		}
+	
+		
+	function configureMouseExtra(cm, repeat, event){
+		var tokenState = cm.getTokenAt(cm.getCursor());
+		if(repeat == "single" && event.type == "mousedown"){
+			
+			if(tokenState.state.errors && tokenState.state.errors.length >0){
+				//condition 1: property error
+				if(tokenState.state.curNode && tokenState.state.curNode.curProp
+						&& tokenState.state.stage == stage.propertyValueCreated
+						&& tokenState.state.curNode.curProp.isValid == false){
+					showErrorMessaging(cm);
+				}
+									
+				//condition 2: node error
+					if(tokenState.state.curNode && !tokenState.state.curNode.curProp 
+							&& tokenState.state.stage == stage.nodeClosed 
+							&& tokenState.state.curNode.isValid == false){
+					showErrorMessaging(cm);
+				}
+			}				
+		}		
+		if(repeat == "double" && event.type == "mousedown" ){				
+			if(tokenState.type ==="idf-label"
+					|| tokenState.state.curNode && tokenState.state.curNode.curProp){
+				
+				showInstruction(cm, tokenState);
+			}			
+		}
+		return {
+			unit : null,
+			extend: false,
+			addNew: false,
+			moveOrDrag: false					
+		}
+	}
+	
+
+	
+ 	function register_listener_editor(cm){		
+		cm.on("change", function(e){						
+			var leafId = idf_editor.getLeafIdByTextEditor(e);
+			idf_editor.idf_file_manager.loadEditor(e, leafId);
+			if(idf_editor.idf_file_manager.checkDirty() && !idf_editor.existsDirtyFile(leafId)){
+				var text = $("#Tab"+leafId+" a").text();
+				$("#Tab"+leafId+" a").text("*"+text);
+				idf_editor.pushToDirtyFiles(leafId);
+				//alert("hello");
+			}	 		
+		})
+	} 
+	
+	
+	function register_handler_command(){	
+		CodeMirror.commands.save = function(cm){
+			var index = idf_editor.text_editors.indexOf(cm);
+			var leafId = idf_editor.text_editors_index[index];
+			
+			//check dirty, if not dirty, no need to save
+			idf_editor.idf_file_manager.loadEditor(cm);
+			if(idf_editor.idf_file_manager.checkDirty()||idf_editor.existsDirtyFile(leafId)){
+				//save file
+				idf_editor.saveChangesForSingleFile(leafId,true);
+				//refresh other open editors
+				refreshOtherTextEditContent(leafId);
+				if(idf_editor.existsDirtyFile(leafId)){				
+					var text = $("#Tab"+leafId+" a").text();
+					$("#Tab"+leafId+" a").text(text.substring(1));
+					idf_editor.removeFromDirtyFiles(leafId);			
+				}
+			}
+		}
+		
+		CodeMirror.commands.undo = function(cm){
+			var index = idf_editor.text_editors.indexOf(cm);
+			var leafId = idf_editor.text_editors_index[index];
+			cm.undo();
+			
+			idf_editor.idf_file_manager.loadEditor(cm);			
+			if(!idf_editor.existsDirtyFile(leafId)){
+				var text = $("#Tab"+leafId+" a").text();
+				$("#Tab"+leafId+" a").text("*"+text);
+				idf_editor.pushToDirtyFiles(leafId);
+			}else if(!idf_editor.idf_file_manager.checkDirty() &&　 idf_editor.existsDirtyFile(leafId)){
+				var text = $("#Tab"+leafId+" a").text();
+				$("#Tab"+leafId+" a").text(text.substring(1));
+				idf_editor.removeFromDirtyFiles(leafId);
+			}			
+		}
+	}
+	
+	
+	
+	
+	
     function loadWidgetEditContent(){
     	
     }

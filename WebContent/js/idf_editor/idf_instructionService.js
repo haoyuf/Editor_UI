@@ -5,8 +5,10 @@
 var IDF_INSTRUCTIONSERVICE = (function(){
 	var cm = null; //codeMirror instance
 	
-	function loadEditor(editor){
+	function loadEditor(editor, ruleManager){
 		cm = editor;
+		rule_manager = ruleManager;
+		
 	}
 	
 	function buildViewForSelectedTextInfo(){
@@ -16,7 +18,7 @@ var IDF_INSTRUCTIONSERVICE = (function(){
 			return self.buildViewForLabelInfo(obj_rule);*/
 		}else{
 			var curProperty = tokenState.state.curNode.curProp;
-			return buildViewForPropertyInfo(curProperty.property);
+			return buildViewForPropertyInfo(curProperty.property, tokenState.string);
 		}				
 	}
 	
@@ -39,12 +41,12 @@ var IDF_INSTRUCTIONSERVICE = (function(){
 
 	
 	
-	function buildViewForPropertyInfo(property_rule){
+	function buildViewForPropertyInfo(property_rule,value){
 		var propertyView = null	
 		var fieldType = property_rule.fieldtype;
 		
 		if(fieldType == "A"){
-			propertyView = buildViewForAttributeFieldType(property_rule);
+			propertyView = buildViewForAttributeFieldType(property_rule, value);
 		}else if(fieldType == "N"){
 			propertyView = buildViewForNumericFieldType(property_rule);
 		}else{
@@ -54,20 +56,35 @@ var IDF_INSTRUCTIONSERVICE = (function(){
 	}
 	
 	
-	function buildViewForAttributeFieldType(property_rule){
-		var type = property_rule.type;							
-		var propertyInfo = 					
+	function buildViewForAttributeFieldType(property_rule, value){
+		var type = property_rule.type;
+		if(type === "handle"){
+			var propertyInfo =
+			{
+				handleName: rule_manager.getNameByHandle(value) ? IDF_RULEMANAGER_OSM.getNameByHandle(value) : "",
+				name: property_rule.name,
+				type: property_rule.type,
+				key: type==="choice"? property_rule.key : rule_manager.getReferencedValuesByObjList(eval(property_rule.objectlist)),
+				objectlist: property_rule.objectlist,
+				referencelist: property_rule.referencelist,
+				note: property_rule.note,
+				required: property_rule.required,								
+			}
+			return buildViewHTMLForHandleFieldType(propertyInfo);				
+		}else{
+			var propertyInfo = 					
 			{
 				name: property_rule.name,
 				type: property_rule.type,
-				key: type==="choice"? property_rule.key : idf_editor.getReferencedValuesByObjList(eval(property_rule.objectlist)),
+				key: type==="choice"? property_rule.key : rule_manager.getReferencedValuesByObjList(eval(property_rule.objectlist)),
 				objectlist: property_rule.objectlist,
 				referencelist: property_rule.referencelist,
 				note: property_rule.note,
 				required: property_rule.required,										
 			};
 			
-		return buildViewHTMLForAttributeFieldType(propertyInfo);
+			return buildViewHTMLForAttributeFieldType(propertyInfo);
+		}
 	}
 	
 	function buildViewForNumericFieldType(property_rule){
@@ -111,7 +128,7 @@ var IDF_INSTRUCTIONSERVICE = (function(){
 		
 		
 		var labelViewHtml = elt('table', [nameView, formatView, memoView, beginextensibleView, 
-		                                     isextensible, minfieldView, numfieldView, requiredView, uniqueView]);
+		                                     isextensible, minfieldView, numfieldView, requiredView, uniqueView],"instruction-table");
 		return labelViewHtml;	
 	}
 	
@@ -127,7 +144,7 @@ var IDF_INSTRUCTIONSERVICE = (function(){
 		var noteView = elt('tr',[elt('th', "Note:"), elt('td', propertyInfo.note)]);
 		var requiredView = elt('tr',[elt('th', "Required:"), elt('td', propertyInfo.required.toString())]);
 		
-		var propertyViewHtml = elt('table', [nameView, typeView, keyView, objlistView, reflistView, noteView, requiredView]);
+		var propertyViewHtml = elt('table', [nameView, typeView, keyView, objlistView, reflistView, noteView, requiredView], "instruction-table");
 		return propertyViewHtml;
 	}
 		
@@ -146,10 +163,24 @@ var IDF_INSTRUCTIONSERVICE = (function(){
 		var requiredView = elt('tr',[elt('th', "Required:"), elt('td', propertyInfo.required.toString())]);
 		
 		var propertyViewHtml = elt('table', [nameView, typeView, autoCalcView, autoSizableView, beginofextensibleView, 
-		                                     maxView, minView, unitView, unitBasedView, noteView, requiredView]);
+		                                     maxView, minView, unitView, unitBasedView, noteView, requiredView],"instruction-table");
 		return propertyViewHtml;
 	}
 	
+	
+	function buildViewHTMLForHandleFieldType(propertyInfo){
+		var handleView = elt('tr',[elt('th',"Handle Name:"), elt('td', propertyInfo.handleName)])
+		var nameView = elt('tr',[elt('th', "Name:"), elt('td', propertyInfo.name)]);
+		var typeView = elt('tr',[elt('th', "Type:"), elt('td', propertyInfo.type)]);
+		var keyView = elt('tr',[elt('th', "Choices:"), elt('td', propertyInfo.key.toString())]);
+		var objlistView = elt('tr',[elt('th', "object-list:"), elt('td', propertyInfo.objectlist)]);
+		var reflistView = elt('tr',[elt('th', "reference-list:"), elt('td', propertyInfo.referencelist)]);
+		var noteView = elt('tr',[elt('th', "Note:"), elt('td', propertyInfo.note)]);
+		var requiredView = elt('tr',[elt('th', "Required:"), elt('td', propertyInfo.required.toString())]);
+		
+		var propertyViewHtml = elt('table', [handleView, nameView, typeView, keyView, objlistView, reflistView, noteView, requiredView],"instruction-table");
+		return propertyViewHtml;		
+	}
 	
 	return {
 		loadEditor:loadEditor,

@@ -2,28 +2,21 @@
  *  Created by Haoyu Feng
  */
 
-function IDF_EDITOR(configs){
-	/*	configs = {};*/
-/*		configs.project_id = 38;
-		configs.branch_id = 76;
-		configs.commit_id = 208;*/
-/*		configs.commit_mode = "file";*/
-				
-		
+function IDF_EDITOR(configs){		
     	var self = this;
     	var idfScope = this;
     	this.mode_options = {display:0, text_edit:1, widget_edit:2};
+    	this.file_type = configs.file_type;
     	this.state = {
     			project_id:configs.project_id,
     			branch_id:configs.branch_id,
     			commit_id:configs.commit_id,
     			isDirty:false,
+    			isValid:true,
     			curMode: self.mode_options.display,
-    			curLeafId:null,
-    			curLeafLabel:null,
-    			curIdfObj:null,
     			tempFiles:[],
     			savedFiles:[],
+    			dirtyFiles:[],
     			commitRecords:[],
     	}
     	
@@ -37,9 +30,12 @@ function IDF_EDITOR(configs){
     	this.idf_Text = null;
     	this.tree_search = null;
     	this.content_data = null;   	
-    	this.text_editor = null;
+    	this.text_editor_active = null;
+    	this.idf_file_manager = IDF_FILEMANAGER;
+    	this.text_editors = [];
+    	this.text_editors_index = [];
     	this.widget_editor = null;
-    	this.idf_rule_manager = IDF_RULEMANAGER;
+    	this.idf_rule_manager = getIdfRuleManager();
     	this.idf_instruction_service = IDF_INSTRUCTIONSERVICE;
     	this.idf_tooltip_service = IDF_TOOLTIPSERVICE;
 /*     	this.autoComplete = function(cm, option){
@@ -51,6 +47,14 @@ function IDF_EDITOR(configs){
     			
     		})
     	} */    	  	
+    	
+    	function getIdfRuleManager(){
+    		if(self.file_type == "osm"){
+    			return IDF_RULEMANAGER_OSM;
+    		}else{
+    			return IDF_RULEMANAGER_EPLUS;
+    		}		
+    	}
     	
     	function pullIdfContentPromise(){
             var project_id = self.state.project_id;
@@ -69,7 +73,7 @@ function IDF_EDITOR(configs){
     	this.pullIdfContent = function(){    		  
             //here only need to update the 
 			//pullIdfContentPromise().then(function(data){
-    			data = test_data;
+    		data = test_data;
 				self.content_data = data;
 				self.idf_rules = data["idfRules"];
 				self.idf_TreeHtml = data["treeHtml"];
@@ -77,10 +81,9 @@ function IDF_EDITOR(configs){
 				self.idf_Text = data["idfText"];
 				self.idf_Objects = data["obj"];
 				self.tree_search =  data["treeSearch"];
- 				$("#base").html(self.idf_DataHtml["1-1-1"]['baseContent']);
-				//loadTextEditContent(); 							
+/* 				$("#base").html(self.idf_DataHtml["1-1-1"]['baseContent']);
+				loadTextEditContent(); */							
 			//});	
-    		
     	}
     	  		
     	
@@ -135,21 +138,11 @@ function IDF_EDITOR(configs){
     		
     		
     	}
-    	
-    	
-    	
-    	//api function to get generated text of selected leaf
-    	this.buildTextForCurLeafId = function(){
-    		var curLeafId = self.state.curLeafId;
-			return buildTextForLeafId(curLeafId);
-    	}
-    	
+    	   	
     	function buildTextForLeafId(leafId){
     		if(leafId){
-    			var curLeafLabel = findLabelByTreeId(leafId);
-    			var result = buildTextForSingleIdfLabel(curLeafLabel);
-    			
-    			self.state.curLeafLabel = curLeafLabel;    					 			
+    			var curLeafLabel = self.findLabelByTreeId(leafId);
+    			var result = buildTextForSingleIdfLabel(curLeafLabel);   			    						 			
     			return result;
     		}else{
     			return "";
@@ -212,8 +205,8 @@ function IDF_EDITOR(configs){
      		return textByLabel;
     	}
      	
-     	    	
-     	function findLabelByTreeId(leafId){     		
+     	    	     	     	
+     	this.findLabelByTreeId = function(leafId){     		
      		for(labelName in self.tree_search){
      			if(self.tree_search[labelName]===leafId){
      				return labelName;
@@ -222,15 +215,25 @@ function IDF_EDITOR(configs){
      	}
      	
      	
-     	this.buildHtmlForCurLeafId = function(){
-     		var curLeafId = self.state.curLeafId;
-     		return self.idf_DataHtml[curLeafId];    		
+
+     	
+     	this.buildHtmlForLeafId = function(leafId){
+     		return self.idf_DataHtml[leafId];  
      	}
      	
-     	this.checkEditorStatus = function(){
-     		var fileState = self.saveTextFile();
+     	
+     	function updateEditorStateForAllFiles(){
+     		var dirtyFilesArray = self.state.dirtyFiles;
+     		for(var i = 0; i < dirtyFilesArray.length; i++){
+     			//var fileState = self.saveTextFile(dirtyFilesArray[i]);
+     			updateEditorStateForSingleFile(dirtyFilesArray[i],true);
+     		}     		
+     	}
+     	
+     	function updateEditorStateForSingleFile(leafId, forceSave){
+     		var fileState = self.saveTextFile(leafId, forceSave);
      		self.state.isDirty = self.state.tempFiles.length > 0 || fileState.isDirty; 		
-     		self.state.isValid = self.state.tempFiles.length === 0 && fileState.isValid;    		
+     		self.state.isValid = self.state.tempFiles.length === 0 && fileState.isValid;  		  		
      	}
      	
      	
@@ -249,9 +252,6 @@ function IDF_EDITOR(configs){
     		   		 		
     	}
      	
-
-      	
-      	
      	
      	function checkDeleteOperations(origFile, savedFile){
      		var records = [];
@@ -323,140 +323,77 @@ function IDF_EDITOR(configs){
      	}
      	
     	this.commitChanges = function(){
-			self.checkEditorStatus();
+			//updateEditorStateForAllFiles();
+			var dirtyFiles = self.state.dirtyFiles;
     		var tempFiles = self.state.tempFiles;
     		var savedFiles = self.state.savedFiles;
-			
+			 
+    		if(dirtyFiles.length > 0){
+    			alert("There are files not saved, please save first");
+    			return false;
+    		}
+    		    		
     		if(self.state.isDirty === false){
     			alert("No changes made");
     			return false;
-        	}else{
-        		if(self.state.isValid === false){
-        			var warningMsg = "There are some files with errors, please fix: \n"
-        			for(var i = 0; i < tempFiles.length; i++){
-        				warningMsg += i+1 +". " + tempFiles[i].fileLabel + "\n";
-        			}      			
-        			alert(warningMsg);
-        			return false;
-        		}else{
-        			if(configs.commit_mode === "operations"){
-            			var commitRecords = "Below are commited operation records: \n";
-    					var records = self.compareOrigState(self.idf_Objects, savedFiles);
-    					alert(records.length);       				
-        			}else{
-        				var commitFiles = savedFiles.map(function(file){
-        					return {label: file.label, leafId:file.leafId, text: file.text}});
-        				alert("Commit files !!!")
-        			}       			
-					history.go(-1);
-					return false;
-        		}
-        	}	
-    	}
-    	   	   	        
-        
-        //processNode is backward
-        function processNode(node){
-        	var idfRef = node.ref;      	       	       	
-        	var updatedIdfObj = {
-        			properties:[],
-        			ref:idfRef,
-        			objLabel: idfRef.name,
-        			objKey: null
-        	};
-        	//handle the end prop first
-/*         	var endProp = node.curProp;
-        	var propertyKey = endProp.property.name;
-    		var propertyValue = endProp.value ? endProp.value : '';
-    		var record = {propertyKey: propertyKey, propertyValue:propertyValue};
-    		updatedIdfObj.properties.unshift(record);  */   
-        	
-        	      	
-        	var curProp = node.lastProp;
-        	while(curProp != null){
-        		var propertyKey = curProp.property.name;
-        		var propertyValue = curProp.value ? curProp.value : '';
-        		var record = {propertyKey: propertyKey, propertyValue:propertyValue};
-        		updatedIdfObj.properties.unshift(record);      		
-        		curProp = curProp.lastProp;        	
         	}
-			       	
-        	updatedIdfObj.objKey = updatedIdfObj.ref.name === 'Name' ? (updatedIdfObj.objLabel+"_"+updatedIdfObj.properties[0].propertyValue) : updatedIdfObj.objLabel;    
-        	return updatedIdfObj;
-        }
+    				  
+    		if(self.state.isValid === false){
+    			var warningMsg = "There are some files with errors, please fix: \n"
+    			for(var i = 0; i < tempFiles.length; i++){
+    				warningMsg += i+1 +". " + tempFiles[i].fileLabel + "\n";
+    			}      			
+    			alert(warningMsg);
+    			return false;
+    		}else{
+    			if(configs.commit_mode === "operations"){
+        			var commitRecords = "Below are commited operation records: \n";
+					var records = self.compareOrigState(self.idf_Objects, savedFiles);
+					alert(records.length);       				
+    			}else{
+    				var commitFiles = savedFiles.map(function(file){
+    					return {label: file.label, leafId:file.leafId, text: file.text}});
+    				alert("Commit files !!!")
+    			}       			
+				history.go(-1);
+				return false;
+    		}	
+    	}
     	
-        function getIdfObjsFromFile(lastToken){
-    		var nodes = lastToken.state.nodes;
-    		var processedNodes = [];
-    		var curNode = nodes;
-    		while(curNode.node != null){
-    			var processedNode = processNode(curNode.node);
-    			processedNodes.unshift(processedNode);
-    			curNode = curNode.next;	
-    		}
-    		return processedNodes;
-        }
-        
-        
-        this.checkDirty = function(){
-        	var editHistory = self.text_editor.getHistory().done;
-        	for(var i = 0; i < editHistory.length; i++){
-        		var recordType = self.text_editor.getHistory().done[i].constructor.name;
-        		if(recordType === 'Object'){
-        			return true;
-        		}
-        	}
-        	return false;
-        }
-        
-        
-        
-    	function processLastTokenState(lastToken){
-    		var isValid = lastToken.state.isValid;
-    		var isDirty = self.checkDirty();
-    		var isClosed = lastToken.state.closed;
-    		
-    		
-    		var populateIdfObjs = function(lastToken){
-    			return getIdfObjsFromFile(lastToken);
-    		}
-    		   		   		   		
-    		return {
-    			isValid : isValid,
-    			isDirty : isDirty,
-    			ref : lastToken.state.curNode.ref,
-    			loadIdfObjs : function (){    				
-    				return populateIdfObjs(lastToken);
-    			},
-    			isClosed : isClosed,
-    			errors:[]
-    		};
+    	this.saveChangesForSingleFile = function(leafId, forceSave){
+    		if(!leafId){return;}
+    		updateEditorStateForSingleFile(leafId, forceSave);
+/*    		for(var i = 0; i < self.text_editors.length; i++){
+    			self.refreshTextEditor(self.text_editors[i]);
+    		}*/
     	}
-        
-        
-        this.getFileState = function(){
-        	var text_editor = self.text_editor;
-        	var fileLastLine = text_editor.lastLine();
-        	while(text_editor.getLineTokens(fileLastLine).length === 0 && fileLastLine > 0){
-        		fileLastLine--;
-        	}
-        	
-        	if(fileLastLine === 0){
-        		return null;
-        	}
-        	
-        	var lastToken = text_editor.getLineTokens(fileLastLine)[text_editor.getLineTokens(fileLastLine).length-1];
-        	
-        	return processLastTokenState(lastToken);
+    	
+    	this.refreshTextEditor = function(cm){
+    		//cm.refresh();
+    		//cm.moveV(0, "page");
+    		//cm.execCommand("newlineAndIndent");
+    		//cm.execCommand("undo");
+    		//cm.getTokenTypeAt({line:20,ch:20});
+    		//cm.patchDisplay(cm,0,cm.getDimensions(cm));
+    	}
+    	
+    	   	   	        
+        this.getTextEditorByLeafId = function(leafId){
+        	var index = self.text_editors_index.indexOf(leafId);        	
+        	return self.text_editors[index];  
         }
         
-        
-        function getSavedTextFromEditor(){
-        	self.text_editor.save();
-        	var fileText = self.text_editor.getTextArea().value;
-        	return fileText;
+        this.getLeafIdByTextEditor = function(editor){
+        	var index = self.text_editors.indexOf(editor);        	
+        	return self.text_editors_index[index];       	
         }
+    	      
+/*        function getTextEditorByLeafId(leafId){
+        	var index = self.text_editors_index.indexOf(leafId);        	
+        	return self.text_editors[index];     	
+        }*/
         
+    
         function pushToTempFiles(){
         	function getTempFile(tempFiles, leafId){
         		for(var i = 0; i < tempFiles.length; i++){
@@ -466,9 +403,9 @@ function IDF_EDITOR(configs){
         		}
         		return null;
         	}
-        	var tempFileText = getSavedTextFromEditor();
-        	var leafId = self.state.curLeafId;
-        	var fileLabel = self.state.curLeafLabel;
+        	var tempFileText = self.idf_file_manager.getSavedTextFromEditor();
+        	var leafId = self.idf_file_manager.getFileId();
+        	var fileLabel = self.findLabelByTreeId(leafId);
         	var tempFile = getTempFile(self.state.tempFiles, leafId)
         	if( tempFile != null){
         		tempFile.text = tempFileText;
@@ -487,15 +424,16 @@ function IDF_EDITOR(configs){
         		}
         		return null;
         	}
-        	var savedFileText = getSavedTextFromEditor();
-        	var leafId = self.state.curLeafId;
+        	var savedFileText = self.idf_file_manager.getSavedTextFromEditor();
+        	var leafId = self.idf_file_manager.getFileId();
         	var savedFile = getSavedFile(self.state.savedFiles, leafId);
         	if(savedFile != null){
         		savedFile.text = savedFileText;
-        	}else{
+        	}else{       		
+        		var label = self.findLabelByTreeId(leafId);
     			var indexedSavedFile = {
-    					leafId:self.state.curLeafId,
-    					fileLabel:self.state.curLeafLabel,
+    					leafId:leafId,
+    					fileLabel:label,
     					fileState:updatedFilestate,
     					text:savedFileText
     			}
@@ -640,53 +578,78 @@ function IDF_EDITOR(configs){
             		
             	}      		
         	}
-        	    	      	   	
+        	
+        	IDF_OBJMANAGER.loadIdfObjs(trackObjs);     	    	      	   	
         } 
         
-        this.loadTextForCurLeafId = function(){
-        	
+      
+        this.loadTextForLeafId = function(leafId){
         	var divText = '';
 			//if there is temp file for this Id, then show the temp file
 			var tempFile = self.state.tempFiles.filter(function(temp){
-				return temp.leafId == self.state.curLeafId;
+				return temp.leafId == leafId;
 			});
-			
-        	
+			      	
 			if(tempFile.length > 0){
 				divText = tempFile[0].text;
 				
 			}else{
 				var savedFile = self.state.savedFiles.filter(function(temp){
-					return temp.leafId == self.state.curLeafId;
+					return temp.leafId == leafId;
 				});
 										
-				divText = savedFile.length > 0 ? savedFile[0].text : self.buildTextForCurLeafId();
+				divText = savedFile.length > 0 ? savedFile[0].text : buildTextForLeafId(leafId);
 			}
-			return divText;
+			return divText;       	
         }
-       
+         
+        
                
-               
-        this.saveTextFile = function(){
-        	//if all nodes are valid, then syncIdfObjData  	
-        	var fileState = self.getFileState();
+        this.saveTextFile = function(leafId, forceSave){
+        	var text_editor = leafId ? self.getTextEditorByLeafId(leafId) : self.text_editor_active;      	
+        	var fileState = self.idf_file_manager.loadEditor(text_editor,leafId).getFileState();
         	if(fileState == null){
         		return;
         	}       		        	
-         	if(fileState.isDirty){
+         	if(fileState.isDirty || forceSave){
          		if(!fileState.isClosed){
          			fileState.errors.push("There are idf objects not closed");
          			fileState.isValid = false;
          		}      		        		
         		if(fileState.isValid){
         			syncIdfObjsAndFile(fileState);       			
-        			pushToSavedFiles(fileState);         			
+        			pushToSavedFiles(fileState);
+        			
         		}else{
         			pushToTempFiles();	
         		}
         	}
          	return fileState;
         }
+        
+        
+        this.pushToDirtyFiles = function(leafId){
+        	self.state.dirtyFiles.push(leafId);
+        }
+        
+        this.removeFromDirtyFiles = function(leafId){
+        	var index = self.state.dirtyFiles.indexOf(leafId);
+        	if (index > -1) {
+        		self.state.dirtyFiles.splice(index, 1);
+        	}
+        }
+        
+        this.existsDirtyFile = function(leafId){
+        	return self.state.dirtyFiles.includes(leafId);
+        }
+
+/*        this.removeTextEditor = function(leafId){
+        	var cm = self.getTextEditorByLeafId(leafId);
+        	var index = idf_editor.text_editors_index.indexOf(leafId);
+        	idf_editor.text_editors_index.splice(index,1);
+        	idf_editor.text_editors.splice(index,1);
+        }*/
+      
         
  //--------------------------Methods Called By CodeMirror--------------------------       
         

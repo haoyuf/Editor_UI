@@ -26,13 +26,13 @@
 
 			// CodeMirror.registerHelper("hintWords", "idf", commonKeywords);
 
-			CodeMirror.defineMode("idf",function(config, parserConfig) {
+			CodeMirror.defineMode("idf_osm",function(config, parserConfig) {
 				var indentUnit = config.indentUnit;
 				var statementIndent = parserConfig.statementIndent;
 				var jsonldMode = parserConfig.jsonld;
 				var jsonMode = parserConfig.json || jsonldMode;
 				var isTS = parserConfig.typescript;
-				var wordRE = parserConfig.wordCharacters || /[\w:*]/;
+				var wordRE = parserConfig.wordCharacters || /[\w:*{}-]/;
 
 				var type, content;
 				function ret(tp, style, cont) {
@@ -42,13 +42,16 @@
 				}
 				
 				function tokenBase(stream, state) {
-					idf_labels = IDF_RULEMANAGER_EPLUS.getAllLabels();
-
+					//if (idf_labels.length === 0) {
+						//idf_labels = getLabelsFromRules(idf_editor.idf_rules)
+						idf_labels = idf_editor.idf_rule_manager.getAllLabels();
+					//}
+					;
 					var ch = stream.next();
 					// number
 					if (ch == "."&& stream.match(/^\d+(?:[eE][+\-]?\d+)?/)) {
 						return ret("number", "number");
-					} else if (/[\[\]{}\(\),;\:\.]/.test(ch)) {
+					} else if (/[\[\]\(\),;\:\.]/.test(ch)) {
 						return ret(ch);
 					} else if (ch == "0" && stream.eat(/x/i)) {
 						stream.eatWhile(/[\da-f]/i);
@@ -67,19 +70,29 @@
 						stream.skipToEnd();
 						return ret("comment", "idf-comment");
 					} else if (wordRE.test(ch)) {
-						stream.eatWhile(wordRE);
-						var word = stream.current();
-						if ((state.stage === stage.noNodes || state.stage === stage.nodeClosed)
-								&& idf_labels.includes(word)) {
-							return ret("idf-label",
-									"idf-label", word);
-						}
+						return tokenBaseOSM(stream, state)
+					}
+				}
+				
+				function tokenBaseOSM(stream, state){
+					stream.eatWhile(wordRE);
+					var word = stream.current();
+					
+					if ((state.stage === stage.noNodes || state.stage === stage.nodeClosed)
+							&& idf_labels.includes(word)) {
+						return ret("idf-label",
+								"idf-label", word);
+					}else{
 						if (word === "No" || word === "Yes") {
 							return ret("boolean", "boolean",
 									word);
 						}
-						return ret("variable", "variable", word);
-					}
+						
+/*						if(word.startWith('{') && word.endWith('}')){
+							return ret("handleUrl", "handleUrl");
+						}		*/			
+					}											
+					return ret("variable", "variable", word);									
 				}
 				
 				
@@ -115,8 +128,12 @@
 
 						
 				function findNode(nodeLabel) {
-					var objRule = IDF_RULEMANAGER_EPLUS.getRuleByLabel(nodeLabel);
-					return objRule;		
+					if (idf_editor) {
+						var objRule = idf_editor
+								.idf_rule_manager.getRuleByLabel(nodeLabel);
+						return objRule;
+					}
+					return null;
 				}
 				
 				function findNodeProperty(node, order) {
@@ -182,7 +199,7 @@
 							order : order,
 							property : property,
 							value : null,
-							isValid : isValidPropertyValue(property, ''),
+							isValid : idf_editor.isValidPropertyValue(property, ''),
 							lastProp: state.curNode.lastProp,
 							propertyComment : state.curNode.lastProp.propertyComment,
 						}
@@ -203,7 +220,7 @@
 								order : 1,
 								property : property,
 								value : null,
-								isValid : isValidPropertyValue(property, ''),
+								isValid : idf_editor.isValidPropertyValue(property, ''),
 								lastProp: state.curNode.lastProp,
 							}
 						
@@ -257,7 +274,7 @@
 								order : order,
 								property : property,
 								value : curPropValue,
-								isValid : isValidPropertyValue(property,curPropValue),
+								isValid : IDF_RULEMANAGER_OSM.isValidFieldValue(property,curPropValue),
 							};
 														
 						
@@ -275,13 +292,11 @@
 							if(curProp.isValid)
 								return style;
 							else {
-								state.errors.push("Current value is invalid")
+								//state.errors.push("Current value is invalid")
 								return "error";
 							}
 						}
-					}
-					
-					
+					}									
 				}
 				
 				function parseIDFForSemiColonType(state, style, type, content,stream){					
@@ -316,7 +331,7 @@
 								order : order,
 								property : property,
 								value : null,
-								isValid : isValidPropertyValue(property, ''),
+								isValid : idf_editor.isValidPropertyValue(property, ''),
 								lastProp: state.curNode.lastProp,
 								propertyComment: state.curNode.lastProp.propertyComment
 							};
@@ -360,6 +375,69 @@
 					}																			
 				}
 				
+				function parseIDFForHandleUrlType(state, style, type, content, stream){
+					stream.takePropertyValue = function() {
+						// check the first , or ;
+						this.eatWhile(/[^,;]/i);
+						if (this.peek() !== ","
+								&& this.peek() != ";") {
+							return "invalidValue";
+						}
+						var value = this.current();
+						return value;
+					}
+					
+					if (state.stage === stage.nodeCreated
+							|| state.stage === stage.propertyValueClosed) {
+						if (state.curNode) {
+							var curPropValue = stream
+									.takePropertyValue();
+							if (curPropValue === "invalidValue") {
+								state.errors.push("Current value is invalid 1")
+								return "error";
+							}
+							var order = state.curNode.lastProp ? state.curNode.lastProp.order + 1
+									: 1;
+							var property = findNodeProperty(
+									state.curNode.ref,
+									order);
+							if(!property){
+								state.errors.push("Exceed maximum field number");
+								state.isValid = false;
+								return "error";
+							}
+							
+							var curProp = {
+								order : order,
+								property : property,
+								value : curPropValue,
+								isValid : idf_editor.isValidPropertyValue(property,curPropValue),
+							};
+														
+						
+							state.curNode = {
+									curProp : curProp,
+									lastProp : state.curNode.lastProp ? state.curNode.lastProp : null ,
+									ref : state.curNode.ref,
+									isValid: state.curNode.isValid && (state.curNode.lastProp ? state.curNode.lastProp.isValid : true),
+							}
+							
+/*								if (curProp.property == null) {
+								return "error";
+							}	*/															
+							state.stage = stage.propertyValueCreated;																				
+							if(curProp.isValid)
+								return style;
+							else {
+								//state.errors.push("Current value is invalid")
+								return "error";
+							}
+						}
+					}
+					
+					
+				}
+				
 															
 				function parseIDF(state, style, type, content,
 						stream) {
@@ -381,6 +459,10 @@
 							if(state.stage === stage.nodeCreated || state.stage === stage.propertyValueClosed){
 								return parseIDFForVariableType(state, style, type, content,stream);
 							}			
+						} else if (type == "handleUrl"){
+							if(state.stage === stage.nodeCreated || state.stage ===stage.propertyValueClosed){
+								return parseIDFForHandleUrlType(state, style, type, content, stream);
+							}
 						} else if (type == ";") {
 							if(state.stage === stage.propertyValueClosed
 									|| state.stage === stage.propertyValueCreated){
@@ -396,11 +478,6 @@
 				}
 				
 				var cx = {state:null, column:null, marked:null, cc:null};
-				
-				function isValidPropertyValue(property, value){
-					var result =  IDF_RULEMANAGER_EPLUS.isValidFieldValue(property, value,IDF_OBJMANAGER.getIdfObjs());
-					return result;			
-				}
 				
 				
 				// Interface

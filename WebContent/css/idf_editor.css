@@ -1,0 +1,280 @@
+@CHARSET "ISO-8859-1";
+
+.editor-container{
+	border:3px solid #ddd;
+	margin-left:1%;
+	margin-right:1%;
+}
+
+.tree-container{
+	width:15%;
+	overflow:auto;
+	position:relative;
+	display:inline-block;
+	height:90vh;
+	border:1px solid #ddd;
+}
+
+.content-container{
+	width:82%;
+	display:inline-block;
+	position:relative;
+	vertical-align:top;
+	margin-left:1%;
+	margin-right:1%;
+	margin-top:1%;
+	margin-bottom:1%;
+	/* border:1px solid #ddd; */
+}
+
+
+
+
+/* #tree-container{
+	width: 15%;
+	overflow:auto;
+	position:fixed;
+	height:90vh;
+}
+
+#editor-container{
+	margin-left:15%;
+	width:85%;
+	position:fixed;
+	display:inline-block;	
+} */
+
+.file{
+	position:relative;
+ 	margin-top:5px;
+	margin-bottom:5px;
+	border:1px solid #ddd;
+	border-radius:3px;
+/* 	overflow: scroll; */
+	resize:vertical;
+	/* display: inline-block; */
+}
+
+.file-header{
+	padding:5px 10px;
+	background-color:#fafbfc;
+	border-bottom:1px solid #e1e4e8;
+	border-top-left-radius:2px;
+	border-top-right-radius:2px;
+	height:40px; 
+}
+
+#instructionHolder .file-header{
+	height: 20px;
+}
+
+.file-actions{
+	float:right;
+	padding-top:2px;
+	font-size:13px;
+}
+
+
+.inline-form{
+	display:inline-block;
+}
+
+
+.file-info{
+	font-family:"SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+	font-size:12px;
+	line-height:32px;
+}
+
+.edit-switch{
+	
+}
+
+
+
+.btn-octicon{
+	display:inline-block;
+	padding:5px;
+	margin-left:5px;
+	line-height:1;
+	color:#586069;
+	vertical-align:middle;
+	background:transparent;
+	border:0;
+	float:right;
+}
+
+.BtnGroup{
+	display:inline-block;
+	vertical-align:middle;
+}
+
+
+.BtnGroup-item:first-child{
+	border-top-left-radius:3px;
+	border-bottom-left-radius:3px;
+}
+
+.BtnGroup-item{
+	position:relative;
+	float:left;
+	border-right-width:0;
+	border-radius:0;
+}
+
+
+.btn-sm{
+	padding:3px 10px;
+	font-size:12px;
+	line-height:20px;
+}
+
+.btn{
+	display:inline-block;
+	cursor:pointer;
+	border:1px solid rgba(27,31,35,0.2);
+}
+
+.blob-wrapper{
+	overflow-x:auto;
+	overflow-y:hidden;
+	border-bottom-right-radius:3px;
+	border-bottom-left-radius:3px;
+	/* height: 60vh; */
+}
+
+
+/* UI */
+ .field_line{
+        /* display:none; */
+    }
+    
+input[type="file"]{
+    display: inline-block;
+}
+    
+#progress{
+    width: 400px;
+    height: 100px;
+    border: 4px double black;
+    position: fixed;
+    z-index:1100;
+    left: 50%;
+    margin-left: -200px;
+    display:none;
+    line-height: 100px;
+    text-align: center;
+    background-color: white;
+    top:100px;
+}
+    
+#merge_btu_group{
+    right:1%;
+    position:absolute;
+    margin-top:-20px;
+}
+.toggle_btn_selected{
+    background-color:#beebff;
+    font-weight:bold;
+}
+.search_opt:hover{
+    background-color: gray;
+    color:white;
+    cursor:pointer;
+}
+ 
+.edit_mode{
+	width:85%;
+	height:100%;
+	overflow:hidden;
+	resize:none;
+}
+.tabclose{
+	position: absolute;
+   	top: 10px;
+   	right: 5px;
+}
+
+.nav-tabs>li>a{
+	padding-right: 20px;
+}
+.nav>li>a:focus{
+	background-color: rgba(0,0,0,0);
+
+}
+#layoutPosition{
+	display: none;
+	position: absolute;
+	background-color: rgba(0,0,0,0.3);
+	height: 100%;
+	width:100%;
+	z-index: 2;
+}
+#layoutPosition div.ableDrop{
+	border:#1ab394 dashed 2px;
+}
+#layoutPosition div{
+	border: gray solid 2px;
+}
+#layoutPosition .left{
+	width: calc(50% - 30px);
+	background-color: #fff;
+	height: calc(60% - 30px);
+	margin: 25px 5px 5px 25px;		
+}
+#layoutPosition .right{
+	width: calc(50% - 30px);
+	background-color: #fff;
+	height: calc(60% - 30px);
+	margin: 25px 25px 5px 5px;
+   	position: absolute;
+   	right: 0;
+   	top: 0;
+}
+#layoutPosition .bottom{
+	width: calc(100% - 50px);
+	background-color: #fff;
+	height: calc(40% - 30px);
+	margin: 5px 25px 25px 25px;
+   	position: absolute;
+   	bottom: 0;
+}
+.content-container{
+	min-height: calc(100vh - 80px);
+}
+.tabD{
+	position: absolute;
+	z-index: 3;
+	width: calc(100% - 20px);
+	height: 100%;
+	top: 0;
+	left: 0;
+}
+#MainTab{
+	float:left;
+}
+#RightTab{
+	width: calc(50% - 5px);
+	float: right;
+	border-left: #ddd solid 1px;
+	padding-left: 5px;
+}
+#BottomTab{
+	float:left;
+}
+
+.instruction-table{
+    border-collapse: separate;
+    width: 100%;
+    border: 1px solid black;
+}
+
+.instruction-table th {
+    width: 10%;
+}
+
+.instruction-table td {
+    border: 1px solid black;
+}
+
+

@@ -3,7 +3,7 @@
  */
 
 
-var IDF_RULEMANAGER = (function(){
+var IDF_RULEMANAGER_EPLUS = (function(){
 	
 	var idf_rules = [];
 	var referenceMap = new Map();
@@ -19,16 +19,6 @@ var IDF_RULEMANAGER = (function(){
 		
 		
 	}
-	
-	function getRuleManager(fileType){
-		switch(fileType){
-			case "eplus":
-				return IDF_RULEMANAGER_EPLUS;		
-			case "osm":
-				return IDF_RULEMANAGER_OSM;
-		}
-	}
-		
 	function forEach(arr, f) {
 	    for (var i = 0, e = arr.length; i < e; ++i) f(arr[i]);
 	}
@@ -49,7 +39,8 @@ var IDF_RULEMANAGER = (function(){
 		if(foundRes != null){
 			return foundRes;
 		}
-			
+		
+		/*			
 		var referenceObjArray = [];			
 		for(var i = 0; i < idf_rules.length; i++){
 			var idfRuleObj = idf_rules[i];
@@ -66,7 +57,7 @@ var IDF_RULEMANAGER = (function(){
 				}
 			}			
 		}		
-		referenceMap.set(aFieldObjListItem, referenceObjArray);		
+		referenceMap.set(aFieldObjListItem, referenceObjArray);		*/
 		return referenceObjArray;	
 	}
 	
@@ -96,7 +87,7 @@ var IDF_RULEMANAGER = (function(){
 		var values = [];
 		for(var i = 0; i < objList.length; i++){
 			var objListItem = objList[i];
-			Array.prototype.push.apply(values, getReferencedValuesByObjListItem(objListItem));  			    	
+			Array.prototype.push.apply(values, getReferencedValuesByObjListItem(objListItem, idf_objs));  			    	
 		}
 		return values;
 	}
@@ -104,7 +95,7 @@ var IDF_RULEMANAGER = (function(){
 	function getReferencedValuesByObjListItem (objListItem, idf_objs){
 		var fields = findReferencedFieldsByObjListItem(objListItem);
 		var result = [];
-		if(idf_objs) IDF_OBJMANAGER.loadIdfObjs(idf_objs);		
+		//if(idf_objs) IDF_OBJMANAGER.loadIdfObjs(idf_objs);		
 		for(var i = 0; i < fields.length; i++){			
 			//var idfObjs = window.IDF_OBJMANAGER.findIdfObjsByLabel(fields[i].label);
 			var idfObjs = IDF_OBJMANAGER.findIdfObjsByLabel(fields[i].label)
@@ -121,7 +112,7 @@ var IDF_RULEMANAGER = (function(){
 		}
 		return result;
 	}
-	
+		
 	
 	function validateFieldValue(field, value, idf_objs){			
 		if (field.required === true
@@ -139,8 +130,9 @@ var IDF_RULEMANAGER = (function(){
 				}
 			} else if (field.type === "object-list") {
 				var objList = eval(field.objectlist);
+				
 				if (objList.length > 0){
-					var availableRefs = getReferencedValuesByObjListItem(objList);
+					var availableRefs = getReferencedValuesByObjList(objList, idf_objs);
 					if(!availableRefs.includes(value)){
 						return "The value is not in the object list"
 					}
@@ -285,21 +277,36 @@ var IDF_RULEMANAGER = (function(){
 
 	
 	
-	function loadIdfRulesByLabelPromise(label){
+	function loadIdfRulesByLabelPromise(commitId, label){
 		var promiseObj = new Promise(function(resolve, reject){
 			var rules = getObjRuleByLabel(label);
 			
 			if( rules != null){
 				resolve();
 			}else{
-				$.ajax({
+				rules = idd_data;
+				resolve();
+			}    		
+		});
+		return promiseObj;		
+	}
+	
+	
+	function loadIdfReferencesMapPromise(commitId){
+		var promiseObj = new Promise(function(resolve, reject){		
+			if(referenceMap.entries.length != 0){
+				resolve();
+			}else{
+				resolve();				
+/*				$.ajax({
 	    			type:"GET",
-	    			url:"./LoadIDFRulesByLabel?commit_id=1&obj_label="+label,
+	    			url:"./LoadIDFReferences?commit_id="+commitId,
 	    			data: {},
 	    			//cache:true,
 	    			dataType:'json',
 	    			success: function(data){
-	    				var obj_rules = data.data.objects[0];
+	    				referenceMapArray = data.data.map;
+	    				populateReferenceMap(referenceMapArray, referenceMap);
 	    				idf_rules.push(obj_rules);
 	    				alert("idf obj rules loaded by service");	    				
 	    				resolve();
@@ -310,48 +317,17 @@ var IDF_RULEMANAGER = (function(){
 	    				alert("error...");
 	    				reject(err);
 	    			}
-	    		}); 							
+	    		}); */							
 			}    		
 		});
 		return promiseObj;		
 	}
 	
 	
-	function loadIdfReferencesMapPromise(){
-		var promiseObj = new Promise(function(resolve, reject){		
-			if(referenceMap.entries.length != 0){
-				resolve();
-			}else{
-				$.ajax({
-	    			type:"GET",
-	    			url:"./LoadIDFReferences?commit_id=1",
-	    			data: {},
-	    			//cache:true,
-	    			dataType:'json',
-	    			success: function(data){
-	    				referenceMapArray = data.data.map;
-	    				populateReferenceMap(referenceMapArray, referenceMap);
-/*	    				idf_rules.push(obj_rules);
-	    				alert("idf obj rules loaded by service");	 */   				
-	    				resolve();
-	    			},
-	    			error:function(err){
-	    				self.errorText = err.responseText;
-	    				self.error = JSON.parse(err.responseText);
-	    				alert("error...");
-	    				reject(err);
-	    			}
-	    		}); 							
-			}    		
-		});
-		return promiseObj;		
-	}
-	
-	
-	function loadIdfRulesByLabelAndReferences(label){
+	function loadIdfRulesByLabelAndReferences(commitId,label){
 			return Promise.all(
-					[loadIdfRulesByLabelPromise(label), 
-					loadIdfReferencesMapPromise()]);		
+					[loadIdfRulesByLabelPromise(commitId,label), 
+					loadIdfReferencesMapPromise(commitId)]);		
 	}
 	
 	
@@ -364,8 +340,6 @@ var IDF_RULEMANAGER = (function(){
 	}
 	
 	return {
-		getRuleManager : getRuleManager,
-		
 		loadIdfRulesPromise : loadIdfRulesPromise,
 		
 		loadIdfRulesByLabelPromise : loadIdfRulesByLabelPromise,
@@ -411,8 +385,9 @@ var IDF_RULEMANAGER = (function(){
 		},
 		
 		
-		isValidFieldValue: function(){
-			if (validateFieldValue(field, value) != "") {
+		isValidFieldValue: function(field, value){
+			var idf_objs = IDF_OBJMANAGER.getIdfObjs();
+			if (validateFieldValue(field, value,idf_objs) != "") {
 				return false;
 			}
 			return true;		

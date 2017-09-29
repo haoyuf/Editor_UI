@@ -3,11 +3,13 @@
  */
 
 
-var IDF_RULEMANAGER = (function(){
+var IDF_RULEMANAGER_OSM = (function(){
 	
 	var idf_rules = [];
 	var referenceMap = new Map();
 	var referenceMapArray = null;
+	var handletonameMap = null;
+	var nametohandleMap = null;
 /*	var idf_server = new Worker('js/idf_editor/idf_server.js');	
 	idf_server.addEventListener('message', function(e){
 		idf_rules = e.data.objects;
@@ -19,16 +21,6 @@ var IDF_RULEMANAGER = (function(){
 		
 		
 	}
-	
-	function getRuleManager(fileType){
-		switch(fileType){
-			case "eplus":
-				return IDF_RULEMANAGER_EPLUS;		
-			case "osm":
-				return IDF_RULEMANAGER_OSM;
-		}
-	}
-		
 	function forEach(arr, f) {
 	    for (var i = 0, e = arr.length; i < e; ++i) f(arr[i]);
 	}
@@ -140,12 +132,17 @@ var IDF_RULEMANAGER = (function(){
 			} else if (field.type === "object-list") {
 				var objList = eval(field.objectlist);
 				if (objList.length > 0){
-					var availableRefs = getReferencedValuesByObjListItem(objList);
+					var availableRefs = getReferencedValuesByObjList(objList);
 					if(!availableRefs.includes(value)){
 						return "The value is not in the object list"
 					}
 				}							
 				return "";
+			}else if(field.type === "handle"){
+				var handlename = handletonameMap[value];
+				if(!handlename){
+					return "This handle map does not exist";
+				}
 			}
 			// field type = numeric
 		} else if (field.fieldtype === "N") {
@@ -242,6 +239,13 @@ var IDF_RULEMANAGER = (function(){
 		return result;	
 	}
 	
+	function getNameByHandle(handleHash){
+		return handletonameMap[handleHash];		
+	}
+	
+	function getHandleByName(handleName){
+		return nametohandleMap[handleName];
+	}
 	
 	function loadIdfRulesPromise(){
 		var promiseObj = new Promise(function(resolve, reject){   			
@@ -285,7 +289,7 @@ var IDF_RULEMANAGER = (function(){
 
 	
 	
-	function loadIdfRulesByLabelPromise(label){
+	function loadIdfRulesByLabelPromise(commitId,label){
 		var promiseObj = new Promise(function(resolve, reject){
 			var rules = getObjRuleByLabel(label);
 			
@@ -294,7 +298,7 @@ var IDF_RULEMANAGER = (function(){
 			}else{
 				$.ajax({
 	    			type:"GET",
-	    			url:"./LoadIDFRulesByLabel?commit_id=1&obj_label="+label,
+	    			url:"./LoadOSMIDFRulesByLabel?commit_id=" + commitId + "&obj_label="+label,
 	    			data: {},
 	    			//cache:true,
 	    			dataType:'json',
@@ -317,14 +321,14 @@ var IDF_RULEMANAGER = (function(){
 	}
 	
 	
-	function loadIdfReferencesMapPromise(){
+	function loadIdfReferencesMapPromise(commitId){
 		var promiseObj = new Promise(function(resolve, reject){		
 			if(referenceMap.entries.length != 0){
 				resolve();
 			}else{
 				$.ajax({
 	    			type:"GET",
-	    			url:"./LoadIDFReferences?commit_id=1",
+	    			url:"./LoadOSMIDFReferences?commit_id="+commitId,
 	    			data: {},
 	    			//cache:true,
 	    			dataType:'json',
@@ -348,10 +352,43 @@ var IDF_RULEMANAGER = (function(){
 	}
 	
 	
-	function loadIdfRulesByLabelAndReferences(label){
+	
+	function loadHandleMapPromise(commitId){
+		var promiseObj = new Promise(function(resolve, reject){		
+			if(referenceMap.entries.length != 0){
+				resolve();
+			}else{
+				$.ajax({
+	    			type:"GET",
+	    			url:"./LoadOSMIDFHandleMap?commit_id="+commitId,
+	    			data: {},
+	    			//cache:true,
+	    			dataType:'json',
+	    			success: function(data){
+	    				//referenceMapArray = data.data.map;
+	    				handletonameMap = data.data.handletoname;
+	    				nametohandleMap = data.data.nametohandle;
+	    								
+	    				resolve();
+	    			},
+	    			error:function(err){
+	    				self.errorText = err.responseText;
+	    				self.error = JSON.parse(err.responseText);
+	    				alert("error...");
+	    				reject(err);
+	    			}
+	    		}); 							
+			}    		
+		});
+		return promiseObj;		
+	}
+	
+	
+	function loadIdfRulesByLabelAndReferences(commitId,label){
 			return Promise.all(
-					[loadIdfRulesByLabelPromise(label), 
-					loadIdfReferencesMapPromise()]);		
+					[loadIdfRulesByLabelPromise(commitId,label), 
+					loadIdfReferencesMapPromise(commitId),
+					loadHandleMapPromise(commitId)]);		
 	}
 	
 	
@@ -364,8 +401,6 @@ var IDF_RULEMANAGER = (function(){
 	}
 	
 	return {
-		getRuleManager : getRuleManager,
-		
 		loadIdfRulesPromise : loadIdfRulesPromise,
 		
 		loadIdfRulesByLabelPromise : loadIdfRulesByLabelPromise,
@@ -411,7 +446,7 @@ var IDF_RULEMANAGER = (function(){
 		},
 		
 		
-		isValidFieldValue: function(){
+		isValidFieldValue: function(field, value){
 			if (validateFieldValue(field, value) != "") {
 				return false;
 			}
@@ -423,6 +458,10 @@ var IDF_RULEMANAGER = (function(){
 		getObjTemplateByLabel :buildObjTemplateByLabel,
 
 		getObjTemplateByObjRule: buildObjTemplateByObjRule,
+		
+		getHandleByName : getHandleByName,
+		
+		getNameByHandle : getNameByHandle,
 		
 		
 	};
